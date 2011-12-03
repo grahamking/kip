@@ -55,6 +55,11 @@ Usage:
  $ pwgen -s1 19 | {name} ebay.com graham_king "Notes"
  If there is a pipe input, use that as the password, instead
  of randomly generating.
+
+ If the LAST argument is --print output pw to stdout instead of
+ using xclip. This is useful if you're on a headless machine, but
+ check over your shoulder first!
+
 """.format(name=NAME, home=HOME)
 
 PW_LEN = 19
@@ -81,8 +86,10 @@ def main(argv=None):
     except OSError:
         pass
 
-    if len(argv) == 2:
-        retcode = show(argv[1])
+    is_visible = (argv[len(argv) - 1] == '--print')
+
+    if len(argv) == 2 or is_visible:
+        retcode = show(argv[1], is_visible)
     else:
         retcode = create(*argv[1:])
 
@@ -145,7 +152,7 @@ def execute(cmd, stdin):
     return proc.communicate()[0]
 
 
-def show(name):
+def show(name, is_visible=False):
     """Display accounts details for name, and put password on clipboard"""
 
     filename = HOME + name
@@ -164,10 +171,13 @@ def show(name):
     parts = contents.split('\n')
 
     password = parts[0]
-    copy_to_clipboard(password)
-
     username = parts[1]
     print(bold(username))
+
+    if is_visible:
+        print(password)
+    else:
+        copy_to_clipboard(password)
 
     if len(parts) > 2:
         print('\n'.join(parts[2:]))
