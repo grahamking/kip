@@ -30,8 +30,10 @@ import string
 import subprocess
 import glob
 
+__version__ = "0.1"
 NAME = sys.argv[0]
 HOME = os.path.expanduser('~/.kip/')
+
 
 USAGE = """
 {name} manages accounts details in gpg files.
