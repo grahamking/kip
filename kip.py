@@ -203,9 +203,15 @@ def guess(name):
 
 def copy_to_clipboard(msg):
     """Copy given message to clipboard"""
-    proc = subprocess.Popen(CLIP_CMD.split(), stdin=subprocess.PIPE)
-    proc.stdin.write(msg)
-    proc.communicate()
+    try:
+        proc = subprocess.Popen(CLIP_CMD.split(), stdin=subprocess.PIPE)
+        proc.stdin.write(msg)
+        proc.communicate()
+    except OSError as e:
+        print('%s -- %s' % (CLIP_CMD, e))
+        print('XLIP is propably not installed')
+
+
 
 
 def bold(msg):
