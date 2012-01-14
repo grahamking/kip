@@ -19,7 +19,11 @@ setup(
     long_description=read('README.md'),
     packages=find_packages(),
     package_data={},
-    scripts = ['kip.py'],
+    entry_points={
+        'console_scripts':[
+            'kip=kip:main'
+            ]
+    },
     url="https://github.com/grahamking/kip",
     install_requires=['setuptools'],
     classifiers=[
