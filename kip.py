@@ -68,7 +68,10 @@ TEMPLATE = """{password}
 {notes}"""
 ENCRYPT_CMD = 'gpg --quiet --encrypt --sign --default-recipient-self --armor'
 DECRYPT_CMD = 'gpg --quiet --decrypt'
-CLIP_CMD = 'pbcopy'
+if sys.platform == 'darwin':
+    CLIP_CMD = 'pbcopy'
+else:
+    CLIP_CMG = 'xclip'
 
 
 def main(argv=None):
