@@ -15,7 +15,7 @@ setup(
     version=VERSION,
     author='Graham King',
     author_email='',
-    description="kip Keeps Internet Passwords",
+    description="kip Keeps Passwords",
     long_description=read('README.md'),
     packages=find_packages(),
     package_data={},
