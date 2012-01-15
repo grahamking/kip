@@ -98,11 +98,10 @@ def main(argv=None):
     return retcode
 
 
-def create(name, username,
-           pwd=None, notes=None):
+def create(name, username, notes=None, **kwargs):
     """Create a new entry"""
-    if pwd:
-        password = pwd
+    if kwargs.has_key('pwd'):
+        password = kwargs['pwd']
     elif not sys.stdin.isatty():
         # stdin is a pipe
         password = sys.stdin.read().strip()
