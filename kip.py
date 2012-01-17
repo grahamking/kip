@@ -30,8 +30,10 @@ import string
 import subprocess
 import glob
 
+__version__ = "0.1"
 NAME = sys.argv[0]
 HOME = os.path.expanduser('~/.kip/')
+
 
 USAGE = """
 {name} manages accounts details in gpg files.
@@ -99,9 +101,11 @@ def main(argv=None):
     return retcode
 
 
-def create(name, username, notes=''):
+def create(name, username, notes=None, **kwargs):
     """Create a new entry"""
-    if not sys.stdin.isatty():
+    if kwargs.has_key('pwd'):
+        password = kwargs['pwd']
+    elif not sys.stdin.isatty():
         # stdin is a pipe
         password = sys.stdin.read().strip()
     else:
@@ -204,9 +208,15 @@ def guess(name):
 
 def copy_to_clipboard(msg):
     """Copy given message to clipboard"""
-    proc = subprocess.Popen(CLIP_CMD.split(), stdin=subprocess.PIPE)
-    proc.stdin.write(msg)
-    proc.communicate()
+    try:
+        proc = subprocess.Popen(CLIP_CMD.split(), stdin=subprocess.PIPE)
+        proc.stdin.write(msg)
+        proc.communicate()
+    except OSError as e:
+        print('%s -- %s' % (CLIP_CMD, e))
+        print('XLIP is propably not installed')
+
+
 
 
 def bold(msg):
