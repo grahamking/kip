@@ -103,7 +103,7 @@ def main(argv=None):
 
 def create(name, username, notes=None, **kwargs):
     """Create a new entry"""
-    if kwargs.has_key('pwd'):
+    if 'pwd' in kwargs:
         password = kwargs['pwd']
     elif not sys.stdin.isatty():
         # stdin is a pipe
@@ -212,11 +212,9 @@ def copy_to_clipboard(msg):
         proc = subprocess.Popen(CLIP_CMD.split(), stdin=subprocess.PIPE)
         proc.stdin.write(msg)
         proc.communicate()
-    except OSError as e:
-        print('%s -- %s' % (CLIP_CMD, e))
-        print('XLIP is propably not installed')
-
-
+    except OSError as err:
+        print('%s -- %s' % (CLIP_CMD, err))
+        print('%s is propably not installed' % CLIP_CMD)
 
 
 def bold(msg):
