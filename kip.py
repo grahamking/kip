@@ -71,7 +71,7 @@ DECRYPT_CMD = 'gpg --quiet --decrypt'
 if sys.platform == 'darwin':
     CLIP_CMD = 'pbcopy'
 else:
-    CLIP_CMG = 'xclip'
+    CLIP_CMD = 'xclip'
 
 
 def main(argv=None):
