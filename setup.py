@@ -18,10 +18,10 @@ setup(
     description="kip Keeps Passwords",
     long_description=read('README.md'),
     packages=find_packages(),
-    package_data={},
+    package_data={'kip': ['kip.conf']},
     entry_points={
         'console_scripts':[
-            'kip=kip:main'
+            'kip=kip.cli:main'
             ]
     },
     url="https://github.com/grahamking/kip",

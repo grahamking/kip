@@ -31,12 +31,14 @@ import string
 import subprocess
 import glob
 
-__version__ = "0.1.1"
 NAME = sys.argv[0]
 
 config=ConfigParser.ConfigParser()
-config.read(['kip.conf', os.path.expanduser('~/.kip/kip.conf')])
-
+config.read(
+        [
+            os.path.join(os.path.dirname(__file__), "kip.conf"),
+            os.path.expanduser('~/.kip/kip.conf')
+        ])
 
 HOME_PWD = os.path.expanduser(config.get('passwords', 'home'))
 LEN_PWD = int(config.get('passwords', 'len'))
