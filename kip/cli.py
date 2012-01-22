@@ -205,7 +205,7 @@ def guess(name):
     if len(globs) == 1:
         res = globs[0]
         return res
-    else:
+    elif len(globs) > 1:
         print('Did you mean:')
         index = 0
         for option in globs:
