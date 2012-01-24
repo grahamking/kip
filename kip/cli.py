@@ -24,6 +24,7 @@ For full license details see <http://www.gnu.org/licenses/>.
 """
 
 import os
+import os.path
 import ConfigParser
 import sys
 import random
@@ -72,7 +73,7 @@ Usage:
  using xclip. This is useful if you're on a headless machine, but
  check over your shoulder first!
 
-""".format(name=NAME, home=HOME_PWD)
+""".format(name=NAME, home=HOME_PWD + os.path.sep)
 
 TEMPLATE = """{password}
 {username}
