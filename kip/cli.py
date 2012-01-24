@@ -24,16 +24,26 @@ For full license details see <http://www.gnu.org/licenses/>.
 """
 
 import os
+import ConfigParser
 import sys
 import random
 import string
 import subprocess
 import glob
 
-__version__ = "0.1"
 NAME = sys.argv[0]
-HOME = os.path.expanduser('~/.kip/')
 
+config=ConfigParser.ConfigParser()
+config.read(
+        [
+            os.path.join(os.path.dirname(__file__), "kip.conf"),
+            os.path.expanduser('~/.kip/kip.conf')
+        ])
+
+HOME_PWD = os.path.expanduser(config.get('passwords', 'home'))
+LEN_PWD = int(config.get('passwords', 'len'))
+ENCRYPT_CMD = config.get('gnupg', 'encrypt_cmd')
+DECRYPT_CMD = config.get('gnupg', 'decrypt_cmd')
 
 USAGE = """
 {name} manages accounts details in gpg files.
@@ -62,14 +72,11 @@ Usage:
  using xclip. This is useful if you're on a headless machine, but
  check over your shoulder first!
 
-""".format(name=NAME, home=HOME)
+""".format(name=NAME, home=HOME_PWD)
 
-PW_LEN = 19
 TEMPLATE = """{password}
 {username}
 {notes}"""
-ENCRYPT_CMD = 'gpg --quiet --encrypt --sign --default-recipient-self --armor'
-DECRYPT_CMD = 'gpg --quiet --decrypt'
 if sys.platform == 'darwin':
     CLIP_CMD = 'pbcopy'
 else:
@@ -87,7 +94,7 @@ def main(argv=None):
 
     # Ensure our home directory exists
     try:
-        os.mkdir(HOME)
+        os.mkdir(HOME_PWD)
     except OSError:
         pass
 
@@ -110,7 +117,7 @@ def create(name, username, notes=None, **kwargs):
         password = sys.stdin.read().strip()
     else:
         # No pw given, make random one
-        password = pwgen(PW_LEN)
+        password = pwgen(LEN_PWD)
 
     if not notes:
         notes = ''
@@ -121,7 +128,7 @@ def create(name, username, notes=None, **kwargs):
         notes=notes)
     enc = encrypt(file_contents)
 
-    enc_file = open(HOME + name, 'wt')
+    enc_file = open(os.path.join(HOME_PWD, name), 'wt')
     enc_file.write(enc)
     enc_file.close()
 
@@ -162,7 +169,7 @@ def execute(cmd, stdin):
 def show(name, is_visible=False):
     """Display accounts details for name, and put password on clipboard"""
 
-    filename = HOME + name
+    filename = os.path.join(HOME_PWD, name)
     try:
         if not os.path.exists(filename):
             filename = guess(name)
@@ -194,14 +201,23 @@ def show(name, is_visible=False):
 
 def guess(name):
     """Guess filename from part of name"""
-    globs = glob.glob('%s*%s*' % (HOME, name))
+    globs = glob.glob('%s/*%s*' % (HOME_PWD, name))
     if len(globs) == 1:
         res = globs[0]
         return res
-    else:
+    elif len(globs) > 1:
         print('Did you mean:')
+        index = 0
         for option in globs:
-            print(' - %s' % os.path.basename(option))
+            print('%s - %s' % (index, os.path.basename(option)))
+            index +=1
+        choice = raw_input("Select a choice ? ")
+        if choice:
+            try:
+                choice = int(choice)
+                return globs[choice]
+            except ValueError as err:
+                print("The choice must be an integer")
 
     raise IOError()
 
