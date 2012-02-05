@@ -1,0 +1,5 @@
+A gpg key pair is included for testing purpose. The password for this key is
+`kip`:
+
+* kip_public.key
+* kip_secret.key
