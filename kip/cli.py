@@ -202,6 +202,7 @@ def show(name, is_visible=False):
 
 def guess(name):
     """Guess filename from part of name"""
+    res = None
     globs = glob.glob('%s/*%s*' % (HOME_PWD, name))
     if len(globs) == 1:
         res = globs[0]
@@ -212,13 +213,16 @@ def guess(name):
         for option in globs:
             print('%s - %s' % (index, os.path.basename(option)))
             index +=1
-        choice = raw_input("Select a choice ? ")
-        if choice:
-            try:
-                choice = int(choice)
-                return globs[choice]
-            except ValueError as err:
-                print("The choice must be an integer")
+        try:
+            choice = raw_input("Select a choice ? ")
+            if choice:
+                try:
+                    choice = int(choice)
+                    return globs[choice]
+                except ValueError as err:
+                    print("The choice must be an integer")
+        except KeyboardInterrupt:
+            print('\nKeyboardInterrupt\n')
 
     raise IOError()
 
