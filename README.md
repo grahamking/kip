@@ -5,9 +5,16 @@ kip Keeps Internet Passwords.
 
 ## Install
 
+Make sure you have a gnupg key pair: [GnuPG HOWTO](https://help.ubuntu.com/community/GnuPrivacyGuardHowto).
+
+Latest release:
+
+    sudo pip install kip
+
+Latest dev:
+
  1. Clone the repo: `git clone https://github.com/grahamking/kip.git`
  1. Install: `sudo python setup.py install`
- 1. Make sure you have a gnupg key pair: [GnuPG HOWTO](https://help.ubuntu.com/community/GnuPrivacyGuardHowto).
 
 ## Store
 
