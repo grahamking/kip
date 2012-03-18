@@ -6,7 +6,10 @@ from setuptools import setup, find_packages
 # README file and 2) it's easier to type in the README file than to put a raw
 # string in below ...
 def read(fname):
-        return open(os.path.join(os.path.dirname(__file__), fname)).read()
+        f = open(os.path.join(os.path.dirname(__file__), fname))
+        long_desc = f.read()
+        f.close()
+        return long_desc
 
 VERSION = __import__('kip').__version__
 
@@ -14,7 +17,7 @@ setup(
     name="kip",
     version=VERSION,
     author='Graham King',
-    author_email='',
+    author_email='graham@gkgk.org',
     description="kip Keeps Passwords",
     long_description=read('README.md'),
     packages=find_packages(),

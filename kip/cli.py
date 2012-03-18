@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """ kip: Keep Internet Passwords.
 
 kip is a command line tool to storing usernames and passwords
@@ -25,16 +25,22 @@ For full license details see <http://www.gnu.org/licenses/>.
 
 import os
 import os.path
-import ConfigParser
+try:
+    import configparser
+except ImportError:
+    # Python 2
+    import ConfigParser as configparser
 import sys
 import random
 import string
 import subprocess
 import glob
 
+from kip import __version__
+
 NAME = sys.argv[0]
 
-config=ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 config.read(
         [
             os.path.join(os.path.dirname(__file__), "kip.conf"),
@@ -47,6 +53,7 @@ ENCRYPT_CMD = config.get('gnupg', 'encrypt_cmd')
 DECRYPT_CMD = config.get('gnupg', 'decrypt_cmd')
 
 USAGE = """
+v{version}
 {name} manages accounts details in gpg files.
 
 Usage:
@@ -73,7 +80,7 @@ Usage:
  using xclip. This is useful if you're on a headless machine, but
  check over your shoulder first!
 
-""".format(name=NAME, home=HOME_PWD + os.path.sep)
+""".format(name=NAME, home=HOME_PWD + os.path.sep, version=__version__)
 
 TEMPLATE = """{password}
 {username}
@@ -157,14 +164,14 @@ def decrypt(contents):
     return execute(DECRYPT_CMD, contents)
 
 
-def execute(cmd, stdin):
+def execute(cmd, data_in):
     """Execute 'cmd' on 'stdin' returning 'stdout'"""
     proc = subprocess.Popen(
         cmd.split(),
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE)
-    proc.stdin.writelines(stdin)
-    return proc.communicate()[0]
+    proc.stdin.write(data_in.encode("utf8"))
+    return proc.communicate()[0].decode("utf8")
 
 
 def show(name, is_visible=False):
@@ -174,14 +181,17 @@ def show(name, is_visible=False):
     try:
         if not os.path.exists(filename):
             filename = guess(name)
-            print('Guessing %s' % bold(os.path.basename(filename)))
+            basename = os.path.basename(filename)
+            print('Guessing {}'.format(bold(basename)))
 
         enc_file = open(filename, 'rt')
     except IOError:
-        print('File not found: %s' % filename)
+        print('File not found: {}'.format(filename))
         return 1
 
     enc = enc_file.read()
+    enc_file.close()
+
     contents = decrypt(enc)
     parts = contents.split('\n')
 
@@ -203,7 +213,7 @@ def show(name, is_visible=False):
 def guess(name):
     """Guess filename from part of name"""
     res = None
-    globs = glob.glob('%s/*%s*' % (HOME_PWD, name))
+    globs = glob.glob('{}/*{}*'.format(HOME_PWD, name))
     if len(globs) == 1:
         res = globs[0]
         return res
@@ -211,15 +221,19 @@ def guess(name):
         print('Did you mean:')
         index = 0
         for option in globs:
-            print('%s - %s' % (index, os.path.basename(option)))
+            print('{} - {}'.format(index, os.path.basename(option)))
             index +=1
         try:
-            choice = raw_input("Select a choice ? ")
+            try:
+                choice = raw_input("Select a choice ? ")
+            except NameError:
+                # python 3
+                choice = input("Select a choice ? ")
             if choice:
                 try:
                     choice = int(choice)
                     return globs[choice]
-                except ValueError as err:
+                except ValueError:
                     print("The choice must be an integer")
         except KeyboardInterrupt:
             print('\nKeyboardInterrupt\n')
@@ -231,16 +245,16 @@ def copy_to_clipboard(msg):
     """Copy given message to clipboard"""
     try:
         proc = subprocess.Popen(CLIP_CMD.split(), stdin=subprocess.PIPE)
-        proc.stdin.write(msg)
+        proc.stdin.write(msg.encode("utf8"))
         proc.communicate()
     except OSError as err:
-        print('%s -- %s' % (CLIP_CMD, err))
-        print('%s is propably not installed' % CLIP_CMD)
+        print('{} -- {}'.format(CLIP_CMD, err))
+        print('{} is propably not installed'.format(CLIP_CMD))
 
 
 def bold(msg):
     """'msg' wrapped in ANSI escape sequence to make it bold"""
-    return '\033[1m%s\033[0m' % msg
+    return "\033[1m{msg}\033[0m".format(msg=msg)
 
 if __name__ == '__main__':
     sys.exit(main())
