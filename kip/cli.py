@@ -101,10 +101,8 @@ def main(argv=None):
         return 1
 
     # Ensure our home directory exists
-    try:
-        os.mkdir(HOME_PWD)
-    except OSError:
-        pass
+    if not os.path.exists(HOME_PWD):
+        os.makedirs(HOME_PWD)
 
     is_visible = (argv[len(argv) - 1] == '--print')
 
