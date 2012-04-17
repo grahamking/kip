@@ -134,7 +134,20 @@ def create(name, username, notes=None, **kwargs):
         notes=notes)
     enc = encrypt(file_contents)
 
-    enc_file = open(os.path.join(HOME_PWD, name), 'wt')
+    dest_filename = os.path.join(HOME_PWD, name)
+    if os.path.exists(dest_filename):
+        print("WARNING: {} already exists.".format(dest_filename))
+        msg = "Overwrite name? [y|N]"
+        try:
+            choice = raw_input(msg)
+        except NameError:
+            # python 3
+            choice = input(msg)
+        if choice.lower() != 'y':
+            print('Abort')
+            return 1
+
+    enc_file = open(dest_filename, 'wt')
     enc_file.write(enc)
     enc_file.close()
 
