@@ -23,6 +23,9 @@ GNU General Public License for more details.
 For full license details see <http://www.gnu.org/licenses/>.
 """
 
+# pylint doesn't like python3's built-in 'input'
+# pylint: disable=W0141
+
 import os
 import os.path
 try:
@@ -32,7 +35,7 @@ except ImportError:
     import ConfigParser as configparser
 import sys
 import random
-import string
+import string                                           # pylint: disable=W0402
 import subprocess
 import glob
 
@@ -160,7 +163,7 @@ def pwgen(length):
     """A random password of given length"""
 
     myrand = random.SystemRandom()
-    alphabet = string.letters[0:52] + string.digits
+    alphabet = string.ascii_letters + string.digits
     password = ''.join(myrand.choice(alphabet) for _ in range(length))
     return password
 
@@ -233,7 +236,7 @@ def guess(name):
         index = 0
         for option in globs:
             print('{} - {}'.format(index, os.path.basename(option)))
-            index +=1
+            index += 1
         try:
             try:
                 choice = raw_input("Select a choice ? ")
