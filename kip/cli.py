@@ -8,7 +8,7 @@ It is intended as an alternative to onepassword, keepass, etc.
 Run it for more details.
 ---
 
-Copyright 2011 Graham King
+Copyright 2011-2012 Graham King
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -38,6 +38,10 @@ import random
 import string                                           # pylint: disable=W0402
 import subprocess
 import glob
+from http.server import SimpleHTTPRequestHandler
+import ssl
+import socketserver
+
 
 from kip import __version__
 
@@ -83,6 +87,9 @@ Usage:
  using xclip. This is useful if you're on a headless machine, but
  check over your shoulder first!
 
+ If the LAST argument is --serve=my.example.com we start an HTTPS server
+ on my.example.com, so you can access your password remotely.
+
 """.format(name=NAME, home=HOME_PWD + os.path.sep, version=__version__)
 
 TEMPLATE = """{password}
@@ -107,10 +114,17 @@ def main(argv=None):
     if not os.path.exists(HOME_PWD):
         os.makedirs(HOME_PWD)
 
-    is_visible = (argv[len(argv) - 1] == '--print')
+    last_arg = argv[len(argv) - 1]
+    is_visible = (last_arg == '--print')
+    is_serve = last_arg.startswith('--serve')
 
-    if len(argv) == 2 or is_visible:
+    if is_serve:
+        address = last_arg.split('=')[1]
+        http_server(address)
+
+    elif len(argv) == 2 or is_visible:
         retcode = show(argv[1], is_visible)
+
     else:
         retcode = create(*argv[1:])
 
@@ -269,6 +283,73 @@ def copy_to_clipboard(msg):
 def bold(msg):
     """'msg' wrapped in ANSI escape sequence to make it bold"""
     return "\033[1m{msg}\033[0m".format(msg=msg)
+
+
+#
+# HTTP server / remote access part
+#
+
+def http_server(address):
+    """Start an HTTP server to access passwords remotely.
+    """
+
+    httpd = SockServ((address, 4443), HTTPHandler)
+    httpd.socket = ssl.wrap_socket(
+            httpd.socket,
+            keyfile='key.pem',
+            certfile='cacert.pem',
+            ssl_version=ssl.PROTOCOL_TLSv1,
+            server_side=True)
+    httpd.serve_forever()
+
+
+class SockServ(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    """Threaded TCPServer which sets SO_REUSEADDR on socket"""
+    allow_reuse_address = True
+    daemon_threads = True
+
+
+class HTTPHandler(SimpleHTTPRequestHandler):
+    """Pushes files out over HTTP"""
+
+    HTML = b"""<form method=POST>
+                <input type=text name=name placeholder=name />
+                <input type=password name=key placeholder=key />
+                <input type=submit value=Go />
+              </form>"""
+
+    def do_GET(self):                                   # pylint: disable=C0103
+        """Serve a GET request"""
+
+        self.send_response(200)
+        self.send_header('Cache-Control', 'no-cache')
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+
+        self.wfile.write(self.HTML)
+
+    def do_POST(self):
+        paramstr = self.rfile.read().decode('utf8')
+        params = paramstr.split('&')
+        name = None
+        key = None
+        for param in params:
+            k, v = param.split('=')
+            if k == 'name':
+                name = v
+            else:
+                key = v
+
+        retcode = show(name, False)
+
+        self.send_response(200)
+        self.send_header('Cache-Control', 'no-cache')
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+
+        self.wfile.write("DATA")
+        self.wfile.close()
+
 
 if __name__ == '__main__':
     sys.exit(main())
