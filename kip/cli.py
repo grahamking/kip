@@ -38,9 +38,10 @@ import random
 import string                                           # pylint: disable=W0402
 import subprocess
 import glob
-from http.server import SimpleHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler
 import ssl
 import socketserver
+from urllib.parse import parse_qs
 
 
 from kip import __version__
@@ -194,37 +195,39 @@ def decrypt(contents):
 
 def execute(cmd, data_in):
     """Execute 'cmd' on 'stdin' returning 'stdout'"""
+
+    if isinstance(cmd, str):
+        cmd = cmd.split()
+
     proc = subprocess.Popen(
-        cmd.split(),
+        cmd,
         stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE)
-    proc.stdin.write(data_in.encode("utf8"))
-    return proc.communicate()[0].decode("utf8")
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE)
+    if data_in:
+        proc.stdin.write(data_in.encode("utf8"))
+
+    stdout, stderr = proc.communicate()
+
+    if proc.returncode == 0:
+        return stdout.decode("utf8")
+    else:
+        raise DecryptError(stderr.decode("utf8"))
 
 
 def show(name, is_visible=False):
     """Display accounts details for name, and put password on clipboard"""
 
-    filename = os.path.join(HOME_PWD, name)
     try:
-        if not os.path.exists(filename):
-            filename = guess(name)
-            basename = os.path.basename(filename)
-            print('Guessing {}'.format(bold(basename)))
-
-        enc_file = open(filename, 'rt')
+        enc = load(name)
     except IOError:
-        print('File not found: {}'.format(filename))
+        print('File not found for: {} in {}'.format(name, HOME_PWD))
         return 1
 
-    enc = enc_file.read()
-    enc_file.close()
-
     contents = decrypt(enc)
-    parts = contents.split('\n')
 
-    password = parts[0]
-    username = parts[1]
+    username, password, notes = split(contents)
+
     print(bold(username))
 
     if is_visible:
@@ -232,20 +235,56 @@ def show(name, is_visible=False):
     else:
         copy_to_clipboard(password)
 
-    if len(parts) > 2:
-        print('\n'.join(parts[2:]))
+    if notes:
+        print(notes)
 
     return 0
 
 
-def guess(name):
+def load(name, interactive=True):
+    """Load contents of an encrypted file, and return those contents.
+    Guesses the filename if only a part is given.
+    """
+
+    filename = os.path.join(HOME_PWD, name)
+    if not os.path.exists(filename):
+        filename = guess(name, interactive=interactive)
+        basename = os.path.basename(filename)
+        print('Guessing {}'.format(bold(basename)))
+
+    enc_file = open(filename, 'rt')
+
+    enc = enc_file.read()
+    enc_file.close()
+
+    return enc
+
+
+def split(contents):
+    """Split the contents of a cleartext file and return
+    a tuple of (username, password, notes).
+    """
+
+    parts = contents.split('\n')
+
+    password = parts[0]
+    username = parts[1]
+
+    notes = None
+    if len(parts) > 2:
+        notes = '\n'.join(parts[2:])
+
+    return username, password, notes
+
+
+def guess(name, interactive=True):
     """Guess filename from part of name"""
     res = None
     globs = glob.glob('{}/*{}*'.format(HOME_PWD, name))
     if len(globs) == 1:
         res = globs[0]
         return res
-    elif len(globs) > 1:
+    elif len(globs) > 1 and interactive:
         print('Did you mean:')
         index = 0
         for option in globs:
@@ -293,6 +332,13 @@ def http_server(address):
     """Start an HTTP server to access passwords remotely.
     """
 
+    try:
+        gen_cert(address)
+    except DecryptError as exc:
+        print("Failed to generate SSL certificate. Aborting.")
+        print(exc.gpg_msg)
+        return 1
+
     httpd = SockServ((address, 4443), HTTPHandler)
     httpd.socket = ssl.wrap_socket(
             httpd.socket,
@@ -303,13 +349,23 @@ def http_server(address):
     httpd.serve_forever()
 
 
+def gen_cert(address):
+    """Generate self-signed private key and SSL certificate.
+    Creates files key.pem and cacert.pem in current directory.
+    """
+
+    cmd = "openssl req -new -x509 -newkey rsa:2048 -keyout key.pem " + \
+          "-out cacert.pem -days 1095 -nodes -subj /C=ZZ/CN={}".format(address)
+    execute(cmd, None)
+
+
 class SockServ(socketserver.ThreadingMixIn, socketserver.TCPServer):
     """Threaded TCPServer which sets SO_REUSEADDR on socket"""
     allow_reuse_address = True
     daemon_threads = True
 
 
-class HTTPHandler(SimpleHTTPRequestHandler):
+class HTTPHandler(BaseHTTPRequestHandler):
     """Pushes files out over HTTP"""
 
     HTML = b"""<form method=POST>
@@ -329,26 +385,58 @@ class HTTPHandler(SimpleHTTPRequestHandler):
         self.wfile.write(self.HTML)
 
     def do_POST(self):
-        paramstr = self.rfile.read().decode('utf8')
-        params = paramstr.split('&')
-        name = None
-        key = None
-        for param in params:
-            k, v = param.split('=')
-            if k == 'name':
-                name = v
-            else:
-                key = v
+        length = int(self.headers['content-length'])
+        paramstr = self.rfile.read(length).decode('utf8')
 
-        retcode = show(name, False)
+        param_dict = parse_qs(paramstr)
 
         self.send_response(200)
         self.send_header('Cache-Control', 'no-cache')
         self.send_header('Content-type', 'text/plain')
         self.end_headers()
 
-        self.wfile.write("DATA")
-        self.wfile.close()
+        name = param_dict["name"][0]
+        try:
+            username, password, notes = self.fetch(name, param_dict['key'][0])
+        except IOError:
+            err = "File not found for: {}".format(name)
+            self.wfile.write(err.encode("utf8"))
+            return
+        except DecryptError as exc:
+            self.wfile.write(b"Decrypt error\n")
+            self.wfile.write(exc.gpg_msg.encode("utf8") + b"\n")
+            return
+
+        self.wfile.write(username.encode("utf8") + b"\n")
+        self.wfile.write(password.encode("utf8") + b"\n")
+        if notes:
+            self.wfile.write(notes.encode("utf8") + b"\n")
+
+    def fetch(self, name, passphrase):
+        """Fetch decrypted contents of file 'name'"""
+
+        enc = load(name, interactive=False)
+
+        decrypt_cmd = ["gpg",
+                       "--quiet",
+                       "--passphrase",
+                       passphrase,
+                       "--decrypt"]
+        contents = execute(decrypt_cmd, enc)
+
+        try:
+            username, password, notes = split(contents)
+        except IndexError:
+            raise DecryptError(contents)
+
+        return username, password, notes
+
+
+class DecryptError(Exception):
+
+    def __init__(self, msg):
+        super(DecryptError, self).__init__()
+        self.gpg_msg = msg
 
 
 if __name__ == '__main__':
