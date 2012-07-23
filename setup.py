@@ -1,4 +1,6 @@
+#/usr/bin/env python3
 import os
+import sys
 from setuptools import setup, find_packages
 
 # Utility function to read the README file.
@@ -12,6 +14,11 @@ def read(fname):
         return long_desc
 
 VERSION = __import__('kip').__version__
+
+if sys.version_info < (3,):
+    print("kip requires python3.")
+    print("Please re-run as: sudo python3 setup.py install")
+    sys.exit(1)
 
 setup(
     name="kip",
@@ -36,6 +43,7 @@ setup(
         'License :: OSI Approved :: GNU General Public License (GPL)',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
         'Topic :: Utilities'
     ]
 )
