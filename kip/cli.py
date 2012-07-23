@@ -374,11 +374,17 @@ class HTTPHandler(BaseHTTPRequestHandler):
                 <input type=submit value=Go />
               </form>"""
 
+    def add_headers(self):
+        """Sends generic headers. Does not close headers."""
+        self.send_response(200)
+        self.send_header('Cache-Control', 'no-cache')
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('Pragma', 'no-cache')  # HTTP/1.0
+
     def do_GET(self):                                   # pylint: disable=C0103
         """Serve a GET request"""
 
-        self.send_response(200)
-        self.send_header('Cache-Control', 'no-cache')
+        self.add_headers()
         self.send_header('Content-type', 'text/html')
         self.end_headers()
 
@@ -390,8 +396,7 @@ class HTTPHandler(BaseHTTPRequestHandler):
 
         param_dict = parse_qs(paramstr)
 
-        self.send_response(200)
-        self.send_header('Cache-Control', 'no-cache')
+        self.add_headers()
         self.send_header('Content-type', 'text/plain')
         self.end_headers()
 
