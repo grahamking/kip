@@ -364,6 +364,11 @@ def gen_cert(address):
     Creates files key.pem and cacert.pem in current directory.
     """
 
+    if os.path.exists("key.pem") and os.path.exists("cacert.pem"):
+        print("Using existing key and certificate.")
+        return
+
+    print("Generating new key and SSL certificate.")
     cmd = "openssl req -new -x509 -newkey rsa:2048 -keyout key.pem " + \
           "-out cacert.pem -days 1095 -nodes -subj /C=ZZ/CN={}".format(address)
     execute(cmd, None)
