@@ -121,7 +121,7 @@ def main(argv=None):
 
     if is_serve:
         address = last_arg.split('=')[1]
-        http_server(address)
+        retcode = http_server(address)
 
     elif len(argv) == 2 or is_visible:
         retcode = show(argv[1], is_visible)
@@ -328,9 +328,15 @@ def bold(msg):
 # HTTP server / remote access part
 #
 
+is_server_running = False
+
+
 def http_server(address):
     """Start an HTTP server to access passwords remotely.
     """
+
+    global is_server_running
+    is_server_running = True
 
     try:
         gen_cert(address)
@@ -346,7 +352,11 @@ def http_server(address):
             certfile='cacert.pem',
             ssl_version=ssl.PROTOCOL_TLSv1,
             server_side=True)
-    httpd.serve_forever()
+
+    while is_server_running:
+        httpd.handle_request()
+
+    return 0
 
 
 def gen_cert(address):
@@ -368,41 +378,65 @@ class SockServ(socketserver.ThreadingMixIn, socketserver.TCPServer):
 class HTTPHandler(BaseHTTPRequestHandler):
     """Pushes files out over HTTP"""
 
-    HTML = b"""<form method=POST>
+    GET_HTML = """<form method=POST>
                 <input type=text name=name placeholder=name />
                 <input type=password name=key placeholder=key />
+                <label>Shutdown?<input type=checkbox name=shutdown /></label>
                 <input type=submit value=Go />
               </form>"""
+
+    POST_HTML_HEAD = """
+    <html>
+        <head>
+            <style>
+            #sme { color:white; position:absolute; left:-999em; }
+            #instructions {font-weight:bold; }
+            </style>
+        </head>
+    """
+    POST_HTML_BODY = """
+        <body><form>
+                {username}<br>
+                {notes}<br>
+                <input id="sme" type=text value="{pass}" /><br>
+            </form>
+            Press Ctrl-C (or Cmd-C) to copy.
+        </body>
+        <script>document.getElementById("sme").select()</script>
+    </html>
+    """
 
     def add_headers(self):
         """Sends generic headers. Does not close headers."""
         self.send_response(200)
-        self.send_header('Cache-Control', 'no-cache')
-        self.send_header('Cache-Control', 'no-store')
-        self.send_header('Pragma', 'no-cache')  # HTTP/1.0
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Pragma", "no-cache")  # HTTP/1.0
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
 
     def do_GET(self):                                   # pylint: disable=C0103
         """Serve a GET request"""
 
         self.add_headers()
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-
-        self.wfile.write(self.HTML)
+        self.wfile.write(self.GET_HTML.encode("utf8"))
 
     def do_POST(self):
-        length = int(self.headers['content-length'])
-        paramstr = self.rfile.read(length).decode('utf8')
+        length = int(self.headers["content-length"])
+        paramstr = self.rfile.read(length).decode("utf8")
 
         param_dict = parse_qs(paramstr)
 
         self.add_headers()
-        self.send_header('Content-type', 'text/plain')
-        self.end_headers()
 
         name = param_dict["name"][0]
         try:
             username, password, notes = self.fetch(name, param_dict['key'][0])
+        except (IOError, DecryptError):
+            # Intentionally unhelpful error message
+            self.wfile.write(b"Computer says no.")
+            return
+        """
         except IOError:
             err = "File not found for: {}".format(name)
             self.wfile.write(err.encode("utf8"))
@@ -411,11 +445,17 @@ class HTTPHandler(BaseHTTPRequestHandler):
             self.wfile.write(b"Decrypt error\n")
             self.wfile.write(exc.gpg_msg.encode("utf8") + b"\n")
             return
+        """
 
-        self.wfile.write(username.encode("utf8") + b"\n")
-        self.wfile.write(password.encode("utf8") + b"\n")
-        if notes:
-            self.wfile.write(notes.encode("utf8") + b"\n")
+        params = {"username": username, "notes": notes, "pass": password}
+        out_html = self.POST_HTML_HEAD + self.POST_HTML_BODY.format(**params)
+
+        self.wfile.write(out_html.encode("utf8"))
+
+        if "shutdown" in param_dict:
+            print("Shutdown requested from interface")
+            global is_server_running
+            is_server_running = False
 
     def fetch(self, name, passphrase):
         """Fetch decrypted contents of file 'name'"""
@@ -423,6 +463,7 @@ class HTTPHandler(BaseHTTPRequestHandler):
         enc = load(name, interactive=False)
 
         decrypt_cmd = ["gpg",
+                      "--no-use-agent",
                        "--quiet",
                        "--passphrase",
                        passphrase,
@@ -438,11 +479,11 @@ class HTTPHandler(BaseHTTPRequestHandler):
 
 
 class DecryptError(Exception):
+    """Raised when executing gpg returned an error."""
 
     def __init__(self, msg):
         super(DecryptError, self).__init__()
         self.gpg_msg = msg
-
 
 if __name__ == '__main__':
     sys.exit(main())
