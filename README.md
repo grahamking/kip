@@ -1,4 +1,3 @@
-
 kip Keeps Internet Passwords.
 
 **Command line script to keep usernames and passwords in gnupg encrypted text files**
@@ -15,6 +14,8 @@ Latest dev:
 
  1. Clone the repo: `git clone https://github.com/grahamking/kip.git`
  1. Install: `sudo python setup.py install`
+
+Arch Linux: There's a [kip package for Arch](https://aur.archlinux.org/packages.php?ID=62555). Thanks [Pezz](https://twitter.com/p_e_z_z)!
 
 ## Store
 
