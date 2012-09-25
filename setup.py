@@ -1,5 +1,6 @@
 import os
 from setuptools import setup, find_packages
+from kip.cli import VERSION
 
 # Utility function to read the README file.
 # Used for the long_description.  It's nice, because now 1) we have a top level
@@ -10,8 +11,6 @@ def read(fname):
         long_desc = f.read()
         f.close()
         return long_desc
-
-VERSION = __import__('kip').__version__
 
 setup(
     name="kip",

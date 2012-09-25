@@ -39,7 +39,7 @@ import string                                           # pylint: disable=W0402
 import subprocess
 import glob
 
-from kip import __version__
+VERSION = "0.2.3"
 
 NAME = sys.argv[0]
 
@@ -83,7 +83,7 @@ Usage:
  using xclip. This is useful if you're on a headless machine, but
  check over your shoulder first!
 
-""".format(name=NAME, home=HOME_PWD + os.path.sep, version=__version__)
+""".format(name=NAME, home=HOME_PWD + os.path.sep, version=VERSION)
 
 TEMPLATE = """{password}
 {username}
