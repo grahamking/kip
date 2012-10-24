@@ -39,7 +39,7 @@ import string                                           # pylint: disable=W0402
 import subprocess
 import glob
 
-VERSION = "0.2.3"
+VERSION = "0.3.0"
 
 NAME = sys.argv[0]
 
@@ -106,6 +106,10 @@ def main(argv=None):
     # Ensure our home directory exists
     if not os.path.exists(HOME_PWD):
         os.makedirs(HOME_PWD)
+
+    if argv[1] == "--import":
+        import_gnome_keyring()
+        return
 
     is_visible = (argv[len(argv) - 1] == '--print')
 
@@ -269,6 +273,42 @@ def copy_to_clipboard(msg):
 def bold(msg):
     """'msg' wrapped in ANSI escape sequence to make it bold"""
     return "\033[1m{msg}\033[0m".format(msg=msg)
+
+def import_gnome_keyring():
+    """Import keys from Gnome Keyring.
+    Depends on gnomekeyring (python lib) which unfortunately is Python2 only,
+    so make sure to run this command with python2.
+    """
+    import gnomekeyring as gk
+    import glib
+
+    def clean_domain(domain):
+        return domain.replace('http://', '').replace('https://', '').strip('/')
+
+    glib.set_application_name('kip')
+
+    ids = gk.list_item_ids_sync('login')
+    for id in ids:
+
+        attrs = gk.item_get_attributes_sync('login', id)
+        domain = clean_domain(attrs['signon_realm'])
+        username = attrs['username_value']
+
+        info = gk.item_get_info_sync('login', id)
+        pwd = info.get_secret()
+
+        msg = "Import %s (%s)? [y|N]" % (domain, username)
+        try:
+            choice = raw_input(msg)
+        except NameError:
+            # python 3
+            choice = input(msg)
+
+        if choice.lower() != 'y':
+            print('Skipping')
+            continue
+
+        create(domain, username, pwd=pwd)
 
 if __name__ == '__main__':
     sys.exit(main())
