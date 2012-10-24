@@ -13,13 +13,13 @@ Latest release:
 Latest dev:
 
  1. Clone the repo: `git clone https://github.com/grahamking/kip.git`
- 1. Install: `sudo python setup.py install`
+ 1. Install: `sudo python3 setup.py install`
 
 Arch Linux: There's a [kip package for Arch](https://aur.archlinux.org/packages.php?ID=62555). Thanks [Pezz](https://github.com/pezz)!
 
 ## Store
 
-    kip example.com username
+    kip add example.com --usename username
 
 What it does:
 
@@ -28,8 +28,8 @@ What it does:
  3. Encrypts and signs it by running `gpg --encrypt --sign --armor`
  4. Copies the new password to your clipboard
 
-Add optional notes: `kip example.com username "My notes"`.
-You can also pipe in your password of choice: `echo S3cret | kip example.com username`
+Add optional notes: `kip add example.com --username username --notes "My notes"`.
+You can ask to be pompted for the password, instead of using a random one: `kip add example.com --username username --prompt`
 
 ## Retrieve
 
@@ -41,14 +41,24 @@ What it does:
  2. Prints your username in bold, and any notes your stored.
  3. Copies your password to the clipboard
 
+## More commands:
+
+ - list: List contents of your password directory
+ - edit: Change the username inside a password file. Handy!
+ - del: Delete a password file
+
+ - import\_from\_chrome: Import passwords that Chrome stored in Gnome Keyring.
+ This requires gnomekeyring (python lib) and python2 (sadly)
+ - export\_to\_gnome\_keyring: Push your passwords into Gnome Keyring - no
+ reason for this really. Requires same as import\_from\_chrome.
+
 ## Misc
 
 ### Dependencies
 
-
   - gnupg: to encrypt password files
   - xclip (linux) or pbcopy (OSX): to copy password to clipboard
-  - (and python, but you have that already)
+  - (and python3, but you have that already)
 
 On Ubuntu / Debian: `sudo apt-get install gnupg xclip`
 

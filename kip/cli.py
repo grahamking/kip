@@ -39,6 +39,7 @@ import string                                           # pylint: disable=W0402
 import subprocess
 import glob
 import argparse
+import getpass
 
 VERSION = "0.3.0"
 
@@ -57,17 +58,15 @@ ENCRYPT_CMD = config.get('gnupg', 'encrypt_cmd')
 DECRYPT_CMD = config.get('gnupg', 'decrypt_cmd')
 
 USAGE = """
-v{version}
-{name} manages account details in gpg files.
 
-Usage:
+Examples:
 
- $ {name} ebay.com
+ $ {name} get ebay.com
  Decrypts {home}ebay.com using gpg
  Copies password (first line) to clipboard
  Echoes ebay username and notes (other lines)
 
- $ {name} ebay.com graham_king "And some notes"
+ $ {name} add ebay.com --username graham_king "And some notes"
  Generate random password (pwgen -s1 19)
  Creates file {home}ebay.com with format:
     pw
@@ -75,16 +74,7 @@ Usage:
     notes
  Encrypts and signs it with gpg.
 
- $ echo "S3cret" | {name} ebay.com graham_king "Notes"
- $ pwgen -s1 19 | {name} ebay.com graham_king "Notes"
- If there is a pipe input, use that as the password, instead
- of randomly generating.
-
- If the LAST argument is --print output pw to stdout instead of
- using xclip. This is useful if you're on a headless machine, but
- check over your shoulder first!
-
-""".format(name=NAME, home=HOME_PWD + os.path.sep, version=VERSION)
+""".format(name=sys.argv[0], home=HOME_PWD + os.path.sep, version=VERSION)
 
 TEMPLATE = """{password}
 {username}
@@ -95,47 +85,116 @@ else:
     CLIP_CMD = 'xclip'
 
 
-
 def main(argv=None):
     """Start here"""
-
-    CMDS = {
-        "get": cmd_get,
-    }
 
     if not argv:
         argv = sys.argv
 
     args = parseargs()
+    if not args:
+        return 1
 
     # Ensure our home directory exists
     if not os.path.exists(HOME_PWD):
         os.makedirs(HOME_PWD)
 
+    if args.cmd not in CMDS:
+        args.filepart = args.cmd
+        args.cmd = "get"
+
     retcode = CMDS[args.cmd](args)
-
-    """
-    if argv[1] == "--import-chrome":
-        import_chrome_gnome_keyring()
-        return 0
-    elif argv[1] == "--export":
-        export_to_gnome_keyring()
-        return 0
-
-    is_visible = (argv[len(argv) - 1] == '--print')
-
-    if len(argv) == 2 or is_visible:
-        retcode = show(argv[1], is_visible)
-    else:
-        retcode = create(*argv[1:])
-    """
 
     return retcode
 
 
 def cmd_get(args):
-    """Get a password"""
-    return show(args.file, args.print)
+    """Command to get a password"""
+    return show(args.filepart, args.is_print)
+
+
+def cmd_add(args):
+    """Command to create a new entry"""
+    if not args.username:
+        msg = "Username: "
+        try:
+            args.username = raw_input(msg)
+        except NameError:
+            # python 3
+            args.username = input(msg)
+
+    pwd = None
+    if args.is_prompt:
+        pwd = getpass.getpass()
+
+    return create(args.filepart, args.username, args.notes, pwd=pwd)
+
+
+def cmd_list(args):
+    """List stored accounts"""
+
+    glob_filter = args.filepart or "*"
+    glob_path = '{}/{}'.format(HOME_PWD, glob_filter)
+    print("Listing {}:".format(bold(glob_path)))
+
+    files = []
+    for filename in glob.glob(glob_path):
+        files.append(os.path.basename(filename))
+
+    files.sort()
+    print('\n'.join(files))
+
+    return 0
+
+
+def cmd_edit(args):
+    """Edit an account."""
+    name = args.filepart
+
+    try:
+        filename = find(name)
+        username, password, notes = extract(filename)
+    except IOError:
+        print('File not found: {}'.format(filename))
+        return 1
+    print("Editing {}".format(bold(filename)))
+
+    if args.username:
+        username = args.username
+
+    if args.is_prompt:
+        password = getpass.getpass()
+
+    os.remove(filename)
+
+    create(name, username, notes, pwd=password)
+
+    return 0
+
+
+def cmd_del(args):
+    """Delete an account"""
+    name = args.filepart
+
+    try:
+        filename = find(name)
+    except IOError:
+        print('File not found: {}'.format(filename))
+        return 1
+
+    msg = "Delete {}? [y|N]".format(bold(filename))
+    try:
+        choice = raw_input(msg)
+    except NameError:
+        # python 3
+        choice = input(msg)
+    if choice.lower() != 'y':
+        print('Abort')
+        return 1
+
+    os.remove(filename)
+
+    return 1
 
 
 def parseargs():
@@ -144,14 +203,31 @@ def parseargs():
     parser = argparse.ArgumentParser(
             description="Manage account details in GPG files")
 
-    parser.add_argument("cmd", metavar="cmd", help="Command")
-    parser.add_argument("file", metavar="file", nargs="?", help="File")
+    parser.add_argument("cmd", nargs="?",
+            help="Command. One of {}. If not given, defaults to 'get'."\
+                    .format(",".join(CMDS.keys())))
+    parser.add_argument("filepart", nargs="?",
+            help="Filename to display, or part thereof")
 
-    parser.add_argument("--user", "-u", help="Username to store")
-    parser.add_argument("--prompt", "-p", action="store_true",
+    parser.add_argument("--username", "-u",
+            help="Username to store. Will prompt if not given.")
+    parser.add_argument("--notes", "-n", help="Notes - anything you want")
+
+    parser.add_argument("--prompt", "-p",
+            dest="is_prompt",
+            action="store_true",
             help="Prompt for password on command line instead of generating it")
-    parser.add_argument("--print", action="store_true",
+
+    parser.add_argument("--print",
+            dest="is_print",
+            action="store_true",
             help="Display password instead of copying to clipboard")
+
+    if len(sys.argv) == 1:
+        print("{name} v{version}".format(name=sys.argv[0], version=VERSION))
+        parser.print_help()
+        print(USAGE)
+        return None
 
     args = parser.parse_args()
     return args
@@ -159,12 +235,8 @@ def parseargs():
 
 def create(name, username, notes=None, **kwargs):
     """Create a new entry"""
-    if 'pwd' in kwargs:
-        password = kwargs['pwd']
-    elif not sys.stdin.isatty():
-        # stdin is a pipe
-        password = sys.stdin.read().strip()
-    else:
+    password = kwargs.get("pwd", None)
+    if not password:
         # No pw given, make random one
         password = pwgen(LEN_PWD)
 
@@ -174,7 +246,7 @@ def create(name, username, notes=None, **kwargs):
     file_contents = TEMPLATE.format(
         password=password,
         username=username,
-        notes=notes)
+        notes=notes + "\n")
     enc = encrypt(file_contents)
 
     dest_filename = os.path.join(HOME_PWD, name)
@@ -224,20 +296,16 @@ def execute(cmd, data_in):
         cmd.split(),
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE)
-    proc.stdin.write(data_in.encode("utf8"))
+    if data_in:
+        proc.stdin.write(data_in.encode("utf8"))
     return proc.communicate()[0].decode("utf8")
 
 
 def show(name, is_visible=False):
     """Display accounts details for name, and put password on clipboard"""
 
-    filename = os.path.join(HOME_PWD, name)
     try:
-        if not os.path.exists(filename):
-            filename = guess(name)
-            basename = os.path.basename(filename)
-            print('Guessing {}'.format(bold(basename)))
-
+        filename = find(name)
         username, password, notes = extract(filename)
     except IOError:
         print('File not found: {}'.format(filename))
@@ -253,6 +321,20 @@ def show(name, is_visible=False):
     print(notes)
 
     return 0
+
+
+def find(name):
+    """Find a file matching 'name', prompting for user's help if needed.
+    Can raise IOError  - caller must handle it.
+    """
+
+    filename = os.path.join(HOME_PWD, name)
+    if not os.path.exists(filename):
+        filename = guess(name)
+        basename = os.path.basename(filename)
+        print('Guessing {}'.format(bold(basename)))
+
+    return filename
 
 
 def extract(filename):
@@ -324,7 +406,7 @@ def bold(msg):
     return "\033[1m{msg}\033[0m".format(msg=msg)
 
 
-def import_chrome_gnome_keyring():
+def cmd_import_from_chrome():
     """Import keys stored in Gnome Keyring by Chrome.
 
     Depends on gnomekeyring (python lib) which unfortunately is Python2 only,
@@ -366,7 +448,7 @@ def import_chrome_gnome_keyring():
         create(domain, username, pwd=pwd)
 
 
-def export_to_gnome_keyring():
+def cmd_export_to_gnome_keyring():
     """Write out accounts to Gnome Keyring. Only useful for 'backup',
     if you have keyring tools. There is currently no way to import
     these keys back into kip.
@@ -418,6 +500,18 @@ def export_to_gnome_keyring():
                             attributes,
                             pwd.encode("utf8"),
                             True)
+
+
+CMDS = {
+    "get": cmd_get,
+    "add": cmd_add,
+    "list": cmd_list,
+    "edit": cmd_edit,
+    "del": cmd_del,
+
+    "import_from_chrome": cmd_import_from_chrome,
+    "export_to_gnome_keyring": cmd_export_to_gnome_keyring,
+}
 
 
 if __name__ == '__main__':
