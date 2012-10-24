@@ -45,10 +45,10 @@ NAME = sys.argv[0]
 
 config = configparser.ConfigParser()
 config.read(
-        [
-            os.path.join(os.path.dirname(__file__), "kip.conf"),
-            os.path.expanduser('~/.kip/kip.conf')
-        ])
+    [
+        os.path.join(os.path.dirname(__file__), "kip.conf"),
+        os.path.expanduser('~/.kip/kip.conf')
+    ])
 
 HOME_PWD = os.path.expanduser(config.get('passwords', 'home'))
 LEN_PWD = int(config.get('passwords', 'len'))
@@ -107,9 +107,12 @@ def main(argv=None):
     if not os.path.exists(HOME_PWD):
         os.makedirs(HOME_PWD)
 
-    if argv[1] == "--import":
-        import_gnome_keyring()
-        return
+    if argv[1] == "--import-chrome":
+        import_chrome_gnome_keyring()
+        return 0
+    elif argv[1] == "--export":
+        export_to_gnome_keyring()
+        return 0
 
     is_visible = (argv[len(argv) - 1] == '--print')
 
@@ -202,10 +205,28 @@ def show(name, is_visible=False):
             basename = os.path.basename(filename)
             print('Guessing {}'.format(bold(basename)))
 
-        enc_file = open(filename, 'rt')
+        username, password, notes = extract(filename)
     except IOError:
         print('File not found: {}'.format(filename))
         return 1
+
+    print(bold(username))
+
+    if is_visible:
+        print(password)
+    else:
+        copy_to_clipboard(password)
+
+    print(notes)
+
+    return 0
+
+
+def extract(filename):
+    """Extracts username, password and notes from given file,
+    and returns as tuple (username, password, notes).
+    """
+    enc_file = open(filename, 'rt')     # Can raise IOError - caller must catch
 
     enc = enc_file.read()
     enc_file.close()
@@ -215,17 +236,12 @@ def show(name, is_visible=False):
 
     password = parts[0]
     username = parts[1]
-    print(bold(username))
 
-    if is_visible:
-        print(password)
-    else:
-        copy_to_clipboard(password)
-
+    notes = ""
     if len(parts) > 2:
-        print('\n'.join(parts[2:]))
+        notes = '\n'.join(parts[2:])
 
-    return 0
+    return (username, password, notes)
 
 
 def guess(name):
@@ -274,10 +290,16 @@ def bold(msg):
     """'msg' wrapped in ANSI escape sequence to make it bold"""
     return "\033[1m{msg}\033[0m".format(msg=msg)
 
-def import_gnome_keyring():
-    """Import keys from Gnome Keyring.
+
+def import_chrome_gnome_keyring():
+    """Import keys stored in Gnome Keyring by Chrome.
+
     Depends on gnomekeyring (python lib) which unfortunately is Python2 only,
-    so make sure to run this command with python2.
+    so run: python cli.py --import-chrome
+
+    Note that this does NOT import the keys created by export_to_gnome_keyring,
+    below. This imports what Chrome stores, the export method below
+    pushes kip keys into keyring.
     """
     import gnomekeyring as gk
     import glib
@@ -309,6 +331,61 @@ def import_gnome_keyring():
             continue
 
         create(domain, username, pwd=pwd)
+
+
+def export_to_gnome_keyring():
+    """Write out accounts to Gnome Keyring. Only useful for 'backup',
+    if you have keyring tools. There is currently no way to import
+    these keys back into kip.
+
+    Requires python2 and gnomekeyring lib.
+
+    Note that this does NOT make the passwords usable to Chrome - this is
+    not a counterpart to import_chrome_gnome_keyring.
+    """
+
+    import time
+    import gnomekeyring as gk
+    import glib
+
+    glib.set_application_name('kip')
+
+    keyrings = gk.list_keyring_names_sync()
+    if not 'kip' in keyrings:
+        gk.create_sync('kip', None)     # None means prompt user for password
+
+    for filename in glob.glob('{}/*'.format(HOME_PWD)):
+
+        user, pwd, notes = extract(filename)
+        domain = os.path.basename(filename)
+
+        print("Exporting {} ({})".format(domain, user))
+        """
+        msg = "Export %s (%s)? [y|N]" % (domain, user)
+        try:
+            choice = raw_input(msg)
+        except NameError:
+            # python 3
+            choice = input(msg)
+
+        if choice.lower() != 'y':
+            print('Skipping')
+            continue
+        """
+
+        attributes = {
+            "username": user.encode("utf8"),
+            "notes": notes.encode("utf8"),
+            "date_created": str(int(time.time())),
+        }
+
+        gk.item_create_sync('kip',
+                            gk.ITEM_GENERIC_SECRET,
+                            domain,
+                            attributes,
+                            pwd.encode("utf8"),
+                            True)
+
 
 if __name__ == '__main__':
     sys.exit(main())
