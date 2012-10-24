@@ -38,6 +38,7 @@ import random
 import string                                           # pylint: disable=W0402
 import subprocess
 import glob
+import argparse
 
 VERSION = "0.3.0"
 
@@ -57,7 +58,7 @@ DECRYPT_CMD = config.get('gnupg', 'decrypt_cmd')
 
 USAGE = """
 v{version}
-{name} manages accounts details in gpg files.
+{name} manages account details in gpg files.
 
 Usage:
 
@@ -94,19 +95,26 @@ else:
     CLIP_CMD = 'xclip'
 
 
+
 def main(argv=None):
     """Start here"""
+
+    CMDS = {
+        "get": cmd_get,
+    }
+
     if not argv:
         argv = sys.argv
 
-    if len(argv) == 1:
-        print(USAGE)
-        return 1
+    args = parseargs()
 
     # Ensure our home directory exists
     if not os.path.exists(HOME_PWD):
         os.makedirs(HOME_PWD)
 
+    retcode = CMDS[args.cmd](args)
+
+    """
     if argv[1] == "--import-chrome":
         import_chrome_gnome_keyring()
         return 0
@@ -120,8 +128,33 @@ def main(argv=None):
         retcode = show(argv[1], is_visible)
     else:
         retcode = create(*argv[1:])
+    """
 
     return retcode
+
+
+def cmd_get(args):
+    """Get a password"""
+    return show(args.file, args.print)
+
+
+def parseargs():
+    """Parse command line arguments"""
+
+    parser = argparse.ArgumentParser(
+            description="Manage account details in GPG files")
+
+    parser.add_argument("cmd", metavar="cmd", help="Command")
+    parser.add_argument("file", metavar="file", nargs="?", help="File")
+
+    parser.add_argument("--user", "-u", help="Username to store")
+    parser.add_argument("--prompt", "-p", action="store_true",
+            help="Prompt for password on command line instead of generating it")
+    parser.add_argument("--print", action="store_true",
+            help="Display password instead of copying to clipboard")
+
+    args = parser.parse_args()
+    return args
 
 
 def create(name, username, notes=None, **kwargs):
