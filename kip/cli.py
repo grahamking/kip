@@ -48,6 +48,7 @@ NAME = sys.argv[0]
 config = configparser.ConfigParser()
 config.read(
     [
+        "/etc/kip/kip.conf",
         os.path.join(os.path.dirname(__file__), "kip.conf"),
         os.path.expanduser('~/.kip/kip.conf')
     ])
@@ -308,7 +309,7 @@ def show(name, is_visible=False):
         filename = find(name)
         username, password, notes = extract(filename)
     except IOError:
-        print('File not found: {}'.format(filename))
+        print('File not found: {}'.format(name))
         return 1
 
     print(bold(username))
