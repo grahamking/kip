@@ -1,0 +1,11 @@
+Package: kip
+Version: 0.3.0-1
+Architecture: all
+Maintainer: Graham King <graham@gkgk.org>
+Installed-Size: 72
+Depends: python3, gnupg, xclip
+Section: utils
+Priority: optional
+Homepage: https://github.com/grahamking/kip
+Description: Command line script to keep account details in gnupg encrypted text files.
+ See https://github.com/grahamking/kip/blob/master/README.md for details.
