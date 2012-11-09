@@ -22,7 +22,9 @@ Latest dev:
  1. Clone the repo: `git clone https://github.com/grahamking/kip.git`
  1. Install: `sudo python3 setup.py install`
 
-Arch Linux: There's a [kip package for Arch](https://aur.archlinux.org/packages.php?ID=62555).
+**Ubuntu**: [PPA with 'precise' package](https://launchpad.net/~graham-king/+archive/ppa)
+
+**Arch Linux**: [kip package for Arch](https://aur.archlinux.org/packages.php?ID=62555).
 Thanks [Pezz](https://github.com/pezz)!
 
 # COMMANDS
