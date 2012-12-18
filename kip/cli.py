@@ -399,7 +399,7 @@ def copy_to_clipboard(msg):
         proc.communicate()
     except OSError as err:
         print('{} -- {}'.format(CLIP_CMD, err))
-        print('{} is propably not installed'.format(CLIP_CMD))
+        print('{} is probably not installed'.format(CLIP_CMD))
 
 
 def bold(msg):
