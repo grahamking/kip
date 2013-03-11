@@ -67,7 +67,7 @@ Examples:
  Copies password (first line) to clipboard
  Echoes ebay username and notes (other lines)
 
- $ {name} add ebay.com --username graham_king "And some notes"
+ $ {name} add ebay.com --username graham_king --notes "And some notes"
  Generate random password (pwgen -s1 19)
  Creates file {home}ebay.com with format:
     pw
