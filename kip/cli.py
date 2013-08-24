@@ -166,6 +166,9 @@ def cmd_edit(args):
     if args.is_prompt:
         password = getpass.getpass()
 
+    if args.notes:
+        notes = args.notes
+
     os.remove(filename)
 
     create(name, username, notes, pwd=password)
