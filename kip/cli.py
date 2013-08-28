@@ -8,7 +8,7 @@ It is intended as an alternative to onepassword, keepass, etc.
 Run it for more details.
 ---
 
-Copyright 2011 Graham King
+Copyright 2011-2013 Graham King
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ import glob
 import argparse
 import getpass
 
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 
 NAME = sys.argv[0]
 
