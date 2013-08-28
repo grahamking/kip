@@ -156,7 +156,7 @@ def cmd_edit(args):
         filename = find(name)
         username, password, notes = extract(filename)
     except IOError:
-        print('File not found: {}'.format(filename))
+        print('File not found: {}. Looked in {}'.format(name, HOME_PWD))
         return 1
     print("Editing {}".format(bold(filename)))
 
@@ -184,7 +184,7 @@ def cmd_del(args):
     try:
         filename = find(name)
     except IOError:
-        print('File not found: {}'.format(filename))
+        print('File not found: {}. Looked in {}'.format(name, HOME_PWD))
         return 1
 
     msg = "Delete {}? [y|N]".format(bold(filename))
@@ -313,7 +313,7 @@ def show(name, is_visible=False):
         filename = find(name)
         username, password, notes = extract(filename)
     except IOError:
-        print('File not found: {}'.format(name))
+        print('File not found: {}. Looked in {}'.format(name, HOME_PWD))
         return 1
 
     print(bold(username))
