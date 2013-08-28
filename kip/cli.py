@@ -171,6 +171,7 @@ def cmd_edit(args):
 
     os.remove(filename)
 
+    name = os.path.basename(filename)
     create(name, username, notes, pwd=password)
 
     return 0
