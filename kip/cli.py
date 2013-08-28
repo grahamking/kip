@@ -67,7 +67,7 @@ Examples:
  Copies password (first line) to clipboard
  Echoes ebay username and notes (other lines)
 
- $ {name} add ebay.com --username graham_king "And some notes"
+ $ {name} add ebay.com --username graham_king --notes "And some notes"
  Generate random password (pwgen -s1 19)
  Creates file {home}ebay.com with format:
     pw
@@ -298,8 +298,8 @@ def execute(cmd, data_in):
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE)
     if data_in:
-        proc.stdin.write(data_in.encode("utf8"))
-    return proc.communicate()[0].decode("utf8")
+        proc.stdin.write(data_in)
+    return proc.communicate()[0]
 
 
 def show(name, is_visible=False):
