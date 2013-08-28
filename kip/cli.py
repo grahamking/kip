@@ -235,6 +235,13 @@ def parseargs():
         return None
 
     args = parser.parse_args()
+
+    if args.cmd in ['add', 'edit', 'del'] and len(sys.argv) == 2:
+        print("{name} v{version}".format(name=sys.argv[0], version=VERSION))
+        parser.print_help()
+        print(USAGE)
+        return None
+
     return args
 
 
