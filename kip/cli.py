@@ -92,6 +92,9 @@ def main(argv=None):
     if not argv:
         argv = sys.argv
 
+    if '--autocompleter' in argv:
+        return autocomplete()
+
     args = parseargs()
     if not args:
         return 1
@@ -512,6 +515,32 @@ def cmd_export_to_gnome_keyring():
                             attributes,
                             pwd.encode("utf8"),
                             True)
+
+
+def autocomplete():
+    """Shell autocompletion helper"""
+    # bash exports COMP_LINE and COMP_POINT, tcsh COMMAND_LINE only
+    line = os.environ.get('COMP_LINE') or os.environ.get('COMMAND_LINE') or ''
+    cursor = int(os.environ.get('COMP_POINT') or len(line))
+    args = line[0:cursor].split()
+    current_arg = args[-1]
+    current_char = line[cursor - 1]
+
+    cmds = set(CMDS.keys())
+    # these commands take a password file
+    cmds_on_password = {'get', 'edit', 'del'}
+    has_cmd = cmds.intersection(args)
+    if not has_cmd:
+        if current_arg and current_char.strip():
+            opts = [c for c in cmds if c.startswith(current_arg)]
+        else:
+            opts = cmds
+        print('\n'.join(opts))
+    elif cmds_on_password.intersection(args):
+        files = os.listdir(HOME_PWD)
+        if current_arg and current_char.strip():
+            files = [f for f in files if f.startswith(current_arg)]
+        print('\n'.join(files))
 
 
 CMDS = {

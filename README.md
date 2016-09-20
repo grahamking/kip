@@ -93,6 +93,12 @@ I was using the excellent [Keepass](http://en.wikipedia.org/wiki/KeePass) when I
 
 If you live in the command line, I think you will find **kip** makes your life a little bit better.
 
+For convenience, an autocompletion helper is included. Simply add the following to your shell profile:
+
+```bash
+complete -o default -C "/path/to/kip --autocompleter" kip
+```
+
 # FILES
 
 There's 0 magic involved. Your accounts details are in text files, in your home directory. Each one is encrypted with your public key and signed with your private key. You can ditch **kip** at any time.
