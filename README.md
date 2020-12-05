@@ -1,3 +1,7 @@
+**Update 2020** Try the [Rust port of kip](https://github.com/grahamking/kipr). It's the one I use now. There's a pre-built binary for Linux x86_64.
+
+----
+
 % KIP(1)
 % Graham King
 % 26 OCT 2012
